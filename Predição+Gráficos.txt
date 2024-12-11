@@ -1,0 +1,78 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report
+import numpy as np
+
+def ler_dados_txt(caminho_txt):
+    try:
+        dados = []
+        with open(caminho_txt, 'r') as file:
+            for linha in file:
+                partes = linha.split()  
+                if len(partes) >= 2:  
+                    telefone = partes[1]  
+                    link = partes[-1]     
+                    dados.append([telefone, link])
+
+        df = pd.DataFrame(dados, columns=["Telefone", "Link"])
+       print(df.head())
+
+        return df
+    except Exception as e:
+        print(f"Erro ao ler o arquivo: {e}")
+        return None
+
+
+def gerar_graficos_e_insights(dados):
+    # Limpeza e transformação dos dados
+    dados.dropna(subset=["Telefone", "Link"], inplace=True)
+
+     dados["Respondeu"] = dados["Link"].apply(lambda x: 1 if x != '/' else 0)  # 1 = Respondeu, 0 = Não respondeu
+     dados_modelo = dados[["Telefone", "Link", "Respondeu"]]
+
+    # Separação de variáveis independentes (features) e dependentes (target)
+    X = dados_modelo[["Telefone", "Link"]]  # Usando características como telefone e link
+    y = dados_modelo["Respondeu"]
+
+    X['Telefone'] = X['Telefone'].apply(lambda x: len(str(x)))  
+    X['Link'] = X['Link'].apply(lambda x: len(str(x))) 
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    modelo = LogisticRegression()
+    modelo.fit(X_train, y_train)
+
+
+    y_pred = modelo.predict(X_test)
+    print(classification_report(y_test, y_pred))
+
+    probabilidade_resposta = modelo.predict_proba(X_test)[:, 1] 
+
+    plt.figure(figsize=(10, 6))
+    plt.hist(probabilidade_resposta, bins=30, color="skyblue", edgecolor="black")
+    plt.title("Distribuição das Probabilidades de Resposta")
+    plt.xlabel("Probabilidade de Resposta")
+    plt.ylabel("Frequência")
+    plt.show()
+
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(x=X_test['Telefone'], y=probabilidade_resposta, color="green", edgecolor="black")
+    plt.title("Relação entre Comprimento do Telefone e Probabilidade de Resposta")
+    plt.xlabel("Comprimento do Telefone")
+    plt.ylabel("Probabilidade de Resposta")
+    plt.show()
+    media_probabilidade_resposta = np.mean(probabilidade_resposta)
+    print(f"\nInsight: A probabilidade média de resposta é: {media_probabilidade_resposta:.2f}")
+
+def automacao_insights(caminho_txt):
+    dados = ler_dados_txt(caminho_txt)
+
+    if dados is not None:
+        gerar_graficos_e_insights(dados)
+
+
+caminho_arquivo_txt = "Insira seu caminho aqui"  
+automacao_insights(caminho_arquivo_txt)
